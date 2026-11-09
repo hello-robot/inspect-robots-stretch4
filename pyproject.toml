@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling>=1.18", "hatch-vcs>=0.3"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inspect-robots-stretch4"
+dynamic = ["version"]
+description = "Robocurve's Inspect Robots embodiment adapter for the Hello Robot Stretch 4."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Hello Robot" }, { name = "Shaumik Kalwit" }]
+keywords = ["robotics", "vla", "stretch", "hello-robot", "inspect-robots"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+# inspect-robots is pre-1.0 and changes between minor releases: pin the minor we test
+# against and raise it deliberately.
+dependencies = ["inspect-robots>=0.60,<0.61", "numpy>=1.24"]
+
+# The hardware driver needs stretch4_body (installed on the robot, not on PyPI) and OpenCV
+# (the robot's system one works). They are the embodiment's RUNTIME_REQUIREMENTS, so
+# `inspect-robots doctor` says what to install when one is missing.
+
+[project.optional-dependencies]
+# Two robots as one embodiment: robot 2's driver service and the client that reaches it.
+pair = ["pyzmq>=25"]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.6", "opencv-python-headless>=4.8", "pyzmq>=25"]
+
+[project.urls]
+Homepage = "https://github.com/hello-robot/inspect-robots-stretch4"
+Framework = "https://github.com/robocurve/inspect-robots"
+
+# Inspect Robots discovers the embodiment by entry point: `inspect-robots list` shows it and
+# `--embodiment stretch4` resolves it once this package is installed.
+[project.scripts]
+stretch_inspect_record_poses = "inspect_robots_stretch4.measure:main"
+stretch_inspect_hardware_check = "inspect_robots_stretch4.hardware_check:main"
+stretch_inspect_pair_server = "inspect_robots_stretch4.remote.cli:serve_main"
+stretch_inspect_pair_keys = "inspect_robots_stretch4.remote.cli:keys_main"
+stretch_inspect_pair_calibrate = "inspect_robots_stretch4.pair.calibrate:main"
+
+[project.entry-points."inspect_robots.embodiments"]
+stretch4 = "inspect_robots_stretch4.embodiment:Stretch4Embodiment"
+stretch4-pair = "inspect_robots_stretch4.pair.embodiment:Stretch4PairEmbodiment"
+
+[project.entry-points."inspect_robots.policies"]
+stretch4-hold = "inspect_robots_stretch4.hold:Stretch4HoldPolicy"
+stretch4-pair-hold = "inspect_robots_stretch4.pair.hold:Stretch4PairHoldPolicy"
+
+[project.entry-points."inspect_robots.tasks"]
+uncap-marker = "inspect_robots_stretch4.tasks:uncap_marker"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inspect_robots_stretch4"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+version_scheme = "guess-next-dev"
+fallback_version = "0.0.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --import-mode=importlib"
+markers = [
+    "hardware: drives a real Stretch 4 (skipped unless pytest is run with --hardware)",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["inspect_robots_stretch4"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "pragma: no cover"]
