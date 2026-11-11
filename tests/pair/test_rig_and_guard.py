@@ -6,11 +6,11 @@ import json
 
 import numpy as np
 import pytest
-from inspect_robots.approver import DeltaLimitApprover
+from inspect_robots.guard import DeltaLimitGuard
 from inspect_robots.types import Action
 
 from inspect_robots_stretch4.pair.config import Stretch4PairConfig
-from inspect_robots_stretch4.pair.guard import CrossGuardApprover, cross_guard, in_band
+from inspect_robots_stretch4.pair.guard import CrossGuard, cross_guard, in_band
 from inspect_robots_stretch4.pair.rig import Rig, load_rig, rig_facts, save_rig
 from inspect_robots_stretch4.pair.spaces import PAIR_SEMANTICS, action_box
 
@@ -96,17 +96,17 @@ def test_overlapping_arms_cannot_be_lowered_into_each_other() -> None:
     np.testing.assert_array_equal(out[[1, 7]], [0.5, 0.5])
 
 
-def test_the_approver_keeps_identity_or_rewinds_the_delta_limiter() -> None:
+def test_the_guard_keeps_identity_or_rewinds_the_delta_limiter() -> None:
     box = action_box(Stretch4PairConfig(cross_guard=False))
     assert box.semantics == PAIR_SEMANTICS
     current = pose(arm1=0.4, arm2=0.45)
-    approver = CrossGuardApprover(RIG, lambda: current)
+    guard = CrossGuard(RIG, lambda: current)
     store: dict = {}
-    limiter = DeltaLimitApprover(box)
+    limiter = DeltaLimitGuard(box)
     calm = Action(data=pose(arm1=0.4, arm2=0.45))
-    assert approver.review(limiter.review(calm, store), store) is calm
+    assert guard.review(limiter.review(calm, store), store) is calm
     pushy = Action(data=pose(arm1=0.45, arm2=0.45))
-    out = approver.review(pushy, store)
+    out = guard.review(pushy, store)
     assert out.meta["cross_guard"] and out.data[1] == pytest.approx(LIMIT - 0.45)
     np.testing.assert_array_equal(next(iter(store.values())), out.data)
-    assert CrossGuardApprover(RIG, lambda: None).review(pushy, {}) is pushy
+    assert CrossGuard(RIG, lambda: None).review(pushy, {}) is pushy

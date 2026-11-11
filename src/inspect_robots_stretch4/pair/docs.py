@@ -8,12 +8,14 @@ import math
 import numpy as np
 
 from inspect_robots_stretch4.config import (
+    ARRIVAL_DOCS,
     BASE_DOCS,
     BASE_MOVING_DOCS,
     DEPTH_CAMERA,
     DOCS,
     GRIPPER_DOCS,
     JOINTS,
+    view_docs,
 )
 from inspect_robots_stretch4.pair.config import SIDES, Stretch4PairConfig
 from inspect_robots_stretch4.pair.rig import Rig, rig_facts
@@ -75,6 +77,7 @@ def docs(cfg: Stretch4PairConfig, rig: Rig | None) -> str:
                     f"{side}_{joint} is limited to {lows[i]:.2f}..{highs[i]:.2f} rad on this "
                     "setup.\n"
                 )
+    text += ARRIVAL_DOCS
     if cfg.base != "none":
         text += "".join(BASE_DOCS[j] for j in joints[len(JOINTS) :])
         text += BASE_LIMITS.format(
@@ -94,6 +97,7 @@ def docs(cfg: Stretch4PairConfig, rig: Rig | None) -> str:
             label = side.replace("robot", "robot ")
             lines.append(f"`{name}` is {DEVICE_DOCS[device].format(side=label)}")
     text += f"Cameras: {'; '.join(lines)}.\n"
+    text += view_docs((c for s in SIDES for c in cfg.side(s).cameras), grippers)
     if cfg.gripper_depth:
         wrists = " and ".join(f"`{alias(s, DEPTH_CAMERA)}`" for s in SIDES)
         text += (

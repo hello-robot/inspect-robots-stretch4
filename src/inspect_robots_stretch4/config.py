@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -161,24 +162,39 @@ def action_semantics(cfg: Stretch4EmbodimentConfig) -> ActionSemantics:
     )
 
 
-# Injected into LLM policies' system prompts verbatim, so keep it short and factual.
+# Injected into LLM policies' system prompts verbatim, so keep it short and factual. It holds
+# for any Stretch 4 on any task (measured on our robots); facts about one table or layout go in
+# the operator's notes file instead.
 DOCS = """\
 Hello Robot Stretch 4: a mobile manipulator with an omnidirectional base, a vertical lift, a \
 horizontal telescoping arm, a 3-axis wrist and a gripper.
 
 Action = absolute joint targets, in this order:
 - lift (m): height of the arm carriage; positive is up.
-- arm (m): telescoping arm extension; positive extends away from the mast.
+- arm (m): telescoping arm extension; positive extends away from the mast. The arm droops \
+slightly as it extends: fully out, the gripper sits about 2 cm lower than at 0.3 m for the \
+same lift.
 - wrist_yaw (rad): positive swings the gripper to the robot's left. 0 points it straight out \
-along the arm, 3.14 folds it back (stowed).
-- wrist_pitch (rad): 0 is level; negative tilts the gripper up (-1.12 = fully up), \
-positive tilts it down. Self-collision can stop it before its upper limit, depending on the \
-lift and arm.
-- wrist_roll (rad): positive rolls the gripper clockwise, seen from behind the gripper \
-looking out along its fingers; negative rolls it counter-clockwise.
+along the arm, 1.57 points it straight to the robot's left, 3.14 folds it back (stowed).
+- wrist_pitch (rad): 0 is level and about 1.45 points the gripper straight down; negative \
+tilts it up (-1.12 = fully up). Pointing down pulls the fingertips back toward the robot by \
+about the gripper's length. Self-collision can stop it before its upper limit, depending on \
+the lift and arm.
+- wrist_roll (rad): turns the line the fingers close along. At 0 the wrist camera is on top \
+and the fingers below it; rolling swings the camera, with the gripper's body, round the \
+fingers. Positive rolls the gripper clockwise, seen from behind the gripper looking out along \
+its fingers; negative rolls it counter-clockwise.
 - grip_mm (mm): fingertip aperture; 0 is closed, larger is more open.
 
 """
+
+# How to read `joint_pos` after a move; follows the action and state lines.
+ARRIVAL_DOCS = (
+    "After a move, `joint_pos` shows where each joint actually ended up. Within a few mm, or a "
+    "few hundredths of a radian, of the target counts as reached. A joint that stopped well "
+    "short of its target without being at its limit hit something, or the robot's "
+    "self-collision check stopped it.\n"
+)
 
 BASE_FIXED_DOCS = "The base is held still, so the head camera's view does not move.\n"
 
@@ -193,7 +209,9 @@ BASE_DOCS: dict[str, str] = {
 }
 
 BASE_MOVING_DOCS = (
-    "The base starts each trial at base_theta 0. The head camera is mounted on the base: "
+    "The base starts each trial at base_theta 0. It turns slowly, about 0.3 rad per second; "
+    "a single move can turn it as far as its limits allow, and a quarter turn (1.57 rad) takes "
+    "about 5 s. The head camera is mounted on the base: "
     "turning the base moves the head camera's view with it, so objects shift in the image or "
     "leave it, and positions or image scales worked out before a turn no longer apply. "
     "Re-locate objects in a fresh observation after every turn.\n"
@@ -208,6 +226,17 @@ GRIPPER_DOCS: dict[str, str] = {
         "Before closing, extend until the object is deep between the fingers, close to the "
         "palm, further than looks necessary.\n"
     ),
+    "parallel_gripper": (
+        "Gripper: the fingers stay parallel as they close; fully open is "
+        f"{GRIPPER_OPEN_MM['parallel_gripper']:.0f} mm. The wrist camera sits a little above "
+        "and behind the fingers: the base of the fingers is about 10 cm in front of it and the "
+        "fingertips about 20 cm. grip_mm 0 grips as hard as the gripper can, and commanding 0 "
+        "again doesn't grip harder. A grasp near the fingertips can slip when pulled; a deep "
+        "one, near the base of the fingers (about 15 cm from the wrist camera), holds. The pads "
+        "compress, so a held object reads well below its width (a 1-2 cm thick object reads "
+        "2-5 mm); closed on nothing it reads under 0.3 mm. A small or flat object on a table "
+        "can only be grasped from above.\n"
+    ),
 }
 
 CAMERA_DOCS: dict[str, str] = {
@@ -217,6 +246,33 @@ CAMERA_DOCS: dict[str, str] = {
     "gripper_right": "the gripper camera's right eye, on the wrist",
 }
 
+# What the images show, after the camera list. The wrist image's layout was measured with the
+# parallel gripper, so it is given only with that gripper.
+HEAD_VIEW_DOCS = (
+    "Head images are an oblique view, not a plan view: you see the sides of objects. Raising "
+    "lift moves the gripper image-up.\n"
+)
+WRIST_VIEW_DOCS: dict[str, str] = {
+    "parallel_gripper": (
+        "The wrist camera looks out along the fingers. In its image the two fingertips are "
+        "along the bottom edge, either side of the centre; a point further out along the "
+        "fingers' line appears closer to the image centre. An object that appears between the "
+        "fingertips is still a few cm beyond them. As the gripper moves closer, the fingertips "
+        "stay put in the image and everything beyond them spreads outward from the centre. The "
+        "wrist camera sees only what is ahead of its own fingers.\n"
+    ),
+}
+
+
+def view_docs(cameras: Iterable[str], grippers: Iterable[str]) -> str:
+    """HEAD_VIEW_DOCS if a head camera is in use, then WRIST_VIEW_DOCS for each gripper if a
+    wrist camera is."""
+    devices = {c.split("_", 1)[0] for c in cameras}
+    text = HEAD_VIEW_DOCS if "head" in devices else ""
+    if "gripper" in devices:
+        text += "".join(WRIST_VIEW_DOCS.get(g, "") for g in sorted(set(grippers)))
+    return text
+
 
 def docs(cfg: Stretch4EmbodimentConfig) -> str:
     """DOCS plus the configured base joints, gripper notes and cameras."""
@@ -224,9 +280,11 @@ def docs(cfg: Stretch4EmbodimentConfig) -> str:
     text = DOCS + "".join(BASE_DOCS[j] for j in base)
     n = len(cfg.joints)
     text += f"\nState `joint_pos` has the same {n} values in the same order and units.\n"
+    text += ARRIVAL_DOCS
     text += BASE_MOVING_DOCS if base else BASE_FIXED_DOCS
     cams = "; ".join(f"`{c}` is {CAMERA_DOCS.get(c, 'a camera')}" for c in cfg.cameras)
     text += f"{GRIPPER_DOCS.get(cfg.gripper, '')}Cameras: {cams}.\n"
+    text += view_docs(cfg.cameras, [cfg.gripper])
     if cfg.gripper_depth:
         text += (
             f"Depth: `{DEPTH_CAMERA}` comes with a metric depth image from the wrist stereo "

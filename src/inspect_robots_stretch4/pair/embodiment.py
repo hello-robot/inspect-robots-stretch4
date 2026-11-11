@@ -2,7 +2,7 @@
 
 - Action: 12 absolute joint targets, robot 1's six then robot 2's, or 14 with `-E base=rotate`
   (`pair.spaces`).
-- Safety, inside `step()` and independent of any framework approver: each robot's targets are
+- Safety, inside `step()` and independent of any framework guard: each robot's targets are
   clamped as one Stretch 4's are (MAX_STEP from its last measured joints, then its limits);
   then, if on, the cross guard keeps facing arms apart. Robot 2's service clamps again.
 - Either robot stops both: a run-stop, or another program taking a robot's command lease, on
@@ -23,9 +23,9 @@ from typing import Any, ClassVar
 
 import numpy as np
 import numpy.typing as npt
-from inspect_robots.approver import GuardrailContribution
 from inspect_robots.embodiment import SELF_PACED, EmbodimentInfo
 from inspect_robots.errors import EmbodimentFault, SafetyAbort
+from inspect_robots.guard import GuardContribution
 from inspect_robots.scene import Scene
 from inspect_robots.spaces import Box
 from inspect_robots.types import OPERATOR_END, Action, Observation, StepResult
@@ -37,7 +37,7 @@ from inspect_robots_stretch4.driver import BASE_TOL, DriverFactory, LinkLost, St
 from inspect_robots_stretch4.pair import spaces
 from inspect_robots_stretch4.pair.config import SIDES, Stretch4PairConfig
 from inspect_robots_stretch4.pair.docs import docs
-from inspect_robots_stretch4.pair.guard import APPROVER_NAME, CrossGuardApprover, cross_guard
+from inspect_robots_stretch4.pair.guard import GUARD_NAME, CrossGuard, cross_guard
 from inspect_robots_stretch4.pair.rig import Rig, load_rig
 from inspect_robots_stretch4.side import RobotSide
 
@@ -108,15 +108,13 @@ class Stretch4PairEmbodiment:
         """Hand the terminal to the framework: it gates readiness and ends episodes (Esc)."""
         self._session = session
 
-    def contribute_guardrails(self, action_space: Box) -> GuardrailContribution:
-        """The cross guard as an approver, so the CLI's banner shows it (step() applies it too,
-        for direct rollout() callers); or a warning that it's off."""
+    def contribute_guards(self, action_space: Box) -> GuardContribution:
+        """The cross guard in the framework's guardrail chain, so the CLI's banner shows it
+        (step() applies it too, for direct rollout() callers); or a warning that it's off."""
         if not self._guarding:
-            return GuardrailContribution(warnings=(GUARD_OFF,))
+            return GuardContribution(warnings=(GUARD_OFF,))
         assert self._rig is not None
-        return GuardrailContribution(
-            approvers=((APPROVER_NAME, CrossGuardApprover(self._rig, self._current)),)
-        )
+        return GuardContribution(guards=((GUARD_NAME, CrossGuard(self._rig, self._current)),))
 
     # -- lifecycle ---------------------------------------------------------
 

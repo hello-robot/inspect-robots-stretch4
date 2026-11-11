@@ -201,7 +201,9 @@ def test_docs_describe_the_installed_gripper() -> None:
     sg4 = Stretch4Embodiment(Stretch4EmbodimentConfig(gripper="stretch_gripper")).info.docs
     pg4 = Stretch4Embodiment(Stretch4EmbodimentConfig()).info.docs
     assert "pull back toward the wrist" in sg4
-    assert "Gripper:" not in pg4
+    assert "fingers stay parallel" not in sg4
+    assert "fingers stay parallel" in pg4 and "fully open is 77 mm" in pg4
+    assert "pull back toward the wrist" not in pg4
 
 
 def test_runstop_is_checked_before_commanding(build, driver) -> None:

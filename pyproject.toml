@@ -19,9 +19,8 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed",
 ]
-# inspect-robots is pre-1.0 and changes between minor releases: pin the minor we test
-# against and raise it deliberately.
-dependencies = ["inspect-robots>=0.60,<0.61", "numpy>=1.24"]
+# Pinned to the major release we test against; raise it deliberately.
+dependencies = ["inspect-robots>=1.0,<2", "numpy>=1.24"]
 
 # The hardware driver needs stretch4_body (installed on the robot, not on PyPI) and OpenCV
 # (the robot's system one works). They are the embodiment's RUNTIME_REQUIREMENTS, so

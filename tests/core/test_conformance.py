@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from inspect_robots.approver import DeltaLimitApprover
 from inspect_robots.conformance import assert_embodiment_conformant, check_embodiment
+from inspect_robots.guard import DeltaLimitGuard
 from inspect_robots.registry import resolve
 
 from inspect_robots_stretch4 import Stretch4Embodiment
@@ -18,7 +18,7 @@ def test_no_conformance_warnings() -> None:
 
 
 def test_guardrails_build_from_the_action_space() -> None:
-    DeltaLimitApprover(Stretch4Embodiment().info.action_space)
+    DeltaLimitGuard(Stretch4Embodiment().info.action_space)
 
 
 def test_registered_by_entry_point_and_built_from_cli_kwargs() -> None:

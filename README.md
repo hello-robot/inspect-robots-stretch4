@@ -57,7 +57,7 @@ robot's `stretch4_body`.
 python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install -e .
-pip install 'inspect-robots-agent==0.28.0'   # the LLM agent policy (--policy agent)
+pip install 'inspect-robots-agent==0.30.0'   # the LLM agent policy (--policy agent)
 ```
 
 For two robots, see [Two robots](#two-robots-experimental).
@@ -144,8 +144,8 @@ For another task, replace `my-task` in each command, so each task gets its own
 
 ## Benchmarks
 
-TBD. No benchmark tasks or results are included yet. The only registered task is the
-two-robot `uncap-marker` ([Two robots](#two-robots-experimental)).
+TBD. No benchmark results are included yet. The only registered task is the two-robot
+`uncap-marker` ([Two robots](#two-robots-experimental)).
 
 ## Two robots (experimental)
 
@@ -166,7 +166,7 @@ installing the pair extras instead (`dev` adds the hardware check):
 
 ```bash
 pip install -e '.[pair,dev]'
-pip install 'inspect-robots-agent==0.28.0'   # robot 1 only (runs the agent)
+pip install 'inspect-robots-agent==0.30.0'   # robot 1 only (runs the agent)
 ```
 
 Then, on both:

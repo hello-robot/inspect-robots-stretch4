@@ -10,13 +10,13 @@ from inspect_robots import (
     Observation,
     PolicyConfig,
     PolicyInfo,
+    Record,
     Scene,
     Task,
-    TrialRecord,
     operator_scorer,
 )
 from inspect_robots import eval as ir_eval
-from inspect_robots.approver import ChainApprover, ClampApprover, DeltaLimitApprover
+from inspect_robots.guard import ClampGuard, DeltaLimitGuard, GuardChain
 from inspect_robots.spaces import Box, ObservationSpace
 
 from inspect_robots_stretch4 import STATE_KEY
@@ -44,7 +44,7 @@ class RaiseLiftPolicy:
         return ActionChunk(actions=[Action(data=target)])
 
 
-def _grade_yes(record: TrialRecord, scene: Scene) -> None:
+def _grade_yes(record: Record, scene: Scene) -> None:
     record.operator_judgement = "y"
 
 
@@ -65,7 +65,7 @@ def test_eval_end_to_end(build, driver) -> None:
         emb,
         sinks=[],
         seed=0,
-        approver=ChainApprover(ClampApprover(space), DeltaLimitApprover(space)),
+        guard=GuardChain(ClampGuard(space), DeltaLimitGuard(space)),
         before_scoring=_grade_yes,
     )
 

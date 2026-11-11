@@ -190,11 +190,11 @@ def test_the_cross_guard_holds_facing_arms_apart(build_pair, pair_drivers, rig_f
 
 def test_guardrails_show_the_guard_or_warn_it_is_off(build_pair, rig_file) -> None:
     on = build_pair(rig_file=rig_file, cross_guard=True)
-    contribution = on.contribute_guardrails(on.info.action_space)
-    assert [name for name, _ in contribution.approvers] == ["stretch4-pair cross guard"]
+    contribution = on.contribute_guards(on.info.action_space)
+    assert [name for name, _ in contribution.guards] == ["stretch4-pair cross guard"]
     off = build_pair(cross_guard=False)
-    contribution = off.contribute_guardrails(off.info.action_space)
-    assert contribution.approvers == () and "OFF" in contribution.warnings[0]
+    contribution = off.contribute_guards(off.info.action_space)
+    assert contribution.guards == () and "OFF" in contribution.warnings[0]
 
 
 def test_the_docs_explain_who_is_who(build_pair, rig_file) -> None:

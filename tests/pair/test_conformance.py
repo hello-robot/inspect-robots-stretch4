@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from inspect_robots import Scene, Task, operator_scorer
 from inspect_robots import eval as ir_eval
-from inspect_robots.approver import DeltaLimitApprover
 from inspect_robots.conformance import assert_embodiment_conformant, check_embodiment
+from inspect_robots.guard import DeltaLimitGuard
 from inspect_robots.registry import resolve
+from inspect_robots.tools import control_tools
 
 from inspect_robots_stretch4.pair.embodiment import Stretch4PairEmbodiment
 from inspect_robots_stretch4.pair.hold import Stretch4PairHoldPolicy
@@ -25,7 +25,7 @@ def test_the_pair_is_conformant() -> None:
 
 
 def test_guardrails_build_from_the_action_space() -> None:
-    DeltaLimitApprover(info().action_space)
+    DeltaLimitGuard(info().action_space)
 
 
 def test_registered_by_entry_point_and_built_from_cli_kwargs(rig_file) -> None:
@@ -42,11 +42,10 @@ def test_registered_by_entry_point_and_built_from_cli_kwargs(rig_file) -> None:
 
 
 def test_the_agent_builds_its_tools_on_all_12_joints() -> None:
-    agent = pytest.importorskip("inspect_robots_agent._tools")
     space = info()
-    toolset = agent.build_toolset(space.action_space, space.observation_space, space.control_hz)
-    assert toolset.state_labels() == ("joint_pos", PAIR_JOINTS)
-    move = next(s for s in toolset.schemas() if s["function"]["name"] == "move_joints")
+    tools = control_tools(space.action_space, space.observation_space, space.control_hz)
+    assert tools.state_labels() == ("joint_pos", PAIR_JOINTS)
+    move = next(s for s in tools.library.schemas() if s["function"]["name"] == "move_joints")
     assert all(label in move["function"]["description"] for label in PAIR_JOINTS)
 
 

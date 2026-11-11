@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from inspect_robots.approver import DeltaLimitApprover
+from inspect_robots.guard import DeltaLimitGuard
 from inspect_robots.types import Action
 
 from inspect_robots_stretch4.config import JOINTS, NUM_JOINTS
@@ -23,7 +23,7 @@ from inspect_robots_stretch4.pair.rig import Rig
 
 LIFT, ARM, YAW = (JOINTS.index(j) for j in ("lift", "arm", "wrist_yaw"))
 LIFTS, ARMS, YAWS = ((i, i + NUM_JOINTS) for i in (LIFT, ARM, YAW))
-APPROVER_NAME = "stretch4-pair cross guard"
+GUARD_NAME = "stretch4-pair cross guard"
 
 
 def in_band(pose: npt.NDArray[np.float64], rig: Rig) -> bool:
@@ -64,9 +64,10 @@ def cross_guard(
     return out
 
 
-class CrossGuardApprover:
-    """The guard as a framework approver, so the CLI's guardrail banner shows it. `current`
-    gives the robots' last measured joints (None before the first observation)."""
+class CrossGuard:
+    """The cross guard in the framework's guardrail chain, so the CLI's `guardrails:` banner
+    shows it. `current` gives the robots' last measured joints (None before the first
+    observation)."""
 
     def __init__(self, rig: Rig, current: Callable[[], npt.NDArray[np.float64] | None]) -> None:
         self._rig = rig
@@ -81,5 +82,5 @@ class CrossGuardApprover:
         if np.array_equal(guarded, data):
             return action
         # A substituted target: later deltas must be measured from what will actually run.
-        DeltaLimitApprover.rewind_reference(store, guarded)
+        DeltaLimitGuard.rewind_reference(store, guarded)
         return replace(action, data=guarded, meta={**dict(action.meta), "cross_guard": True})

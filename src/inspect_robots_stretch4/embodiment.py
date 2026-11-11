@@ -3,9 +3,9 @@
 - Action: the six arm joints, then the configured base pose (`-E base=`), as absolute targets
   (`cfg.joints`). The base pose is relative to where the operator placed the robot for the
   trial. The head is not commanded.
-- Safety: inside `step()`, independent of any framework approver, every target is clamped to
+- Safety: inside `step()`, independent of any framework guard, every target is clamped to
   the configured joint limits and to at most `MAX_STEP` from the last measured joints. (The
-  framework's DeltaLimitApprover lets each trial's first action through unlimited.) The driver
+  framework's DeltaLimitGuard lets each trial's first action through unlimited.) The driver
   moves each joint with speed-limited `move_to` and clamps the gripper to its own aperture
   range. An engaged run-stop, or another program holding the control lock, halts the eval.
 - Pacing: each step waits for the next synced camera frame, so steps run at the camera rate
